@@ -16,6 +16,20 @@
             "type": "boolean",
             "description": "When enabled (default), fetches each award's detail page for Purpose, Grant Program, recipient ABN and location, selection process and agency contact. Disable for a faster, listing-only run (still includes recipient, agency, value, category and grant term).",
             "default": true
+        },
+        "onlyNew": {
+            "title": "Delta mode - only new records since last run",
+            "type": "boolean",
+            "description": "When enabled, persists seen GA IDs between runs (in this actor's own key-value store) and returns only records not seen in a prior run. The listing is verified sorted newest-first by Publish Date, so pagination stops as soon as it reaches already-seen records - a scheduled run resolves in seconds instead of walking the full 360,000+ record archive. Recommended for recurring monitoring; leave off for a full one-off extraction.",
+            "default": false
+        },
+        "dateRange": {
+            "title": "Filter by recency (Publish Date)",
+            "type": "string",
+            "description": "Optionally restrict results to records whose own Publish Date falls within this window. Independent of onlyNew - Publish Date is the field this register is ordered by and matched the live fetch date for the newest records when verified, so (unlike some other registers in this portfolio) it is not known to lag real publication.",
+            "editor": "select",
+            "enum": ["24h", "7d", "30d"],
+            "enumTitles": ["Last 24 hours", "Last 7 days", "Last 30 days"]
         }
     }
 }

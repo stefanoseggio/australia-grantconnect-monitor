@@ -6,7 +6,6 @@
         "type": "object",
         "properties": {
             "gaId": { "title": "GA ID", "type": "string" },
-            "gaUrl": { "title": "GA URL", "type": "string" },
             "title": { "title": "Title", "type": ["string", "null"] },
             "variesGaId": {
                 "title": "Varies (base GA ID)",
@@ -49,7 +48,27 @@
             "recipientCountry": { "title": "Recipient Country", "type": ["string", "null"] },
             "agencyContactPhone": { "title": "Agency Contact Phone", "type": ["string", "null"] },
             "agencyContactEmail": { "title": "Agency Contact Email", "type": ["string", "null"] },
-            "scrapedAt": { "title": "Scraped at", "type": "string" }
+            "record_id": {
+                "title": "Record ID",
+                "type": "string",
+                "description": "Same value as gaId - stable across runs"
+            },
+            "event_type": {
+                "title": "Event Type",
+                "type": "string",
+                "description": "NEW_LISTING for a fresh award, AWARD_VARIATION when it varies/amends an earlier award"
+            },
+            "scraped_at": {
+                "title": "Scraped At",
+                "type": "string",
+                "description": "ISO-8601 timestamp of this extraction"
+            },
+            "is_new": {
+                "title": "Is New",
+                "type": "boolean",
+                "description": "true if not seen in a prior run (delta mode)"
+            },
+            "source_url": { "title": "Source URL", "type": "string" }
         }
     },
     "views": {

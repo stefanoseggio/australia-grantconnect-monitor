@@ -1,11 +1,16 @@
+import type { DateRangePreset } from './dateFilter.js';
+
+export type EventType = 'NEW_LISTING' | 'AWARD_VARIATION';
+
 export interface ActorInput {
     maxItems: number;
     fetchDetail: boolean;
+    onlyNew: boolean;
+    dateRange?: DateRangePreset;
 }
 
 export interface GrantAwardRecord {
     gaId: string;
-    gaUrl: string;
     title: string | null;
     variesGaId: string | null;
     variesUrl: string | null;
@@ -40,5 +45,11 @@ export interface GrantAwardRecord {
     recipientCountry: string | null;
     agencyContactPhone: string | null;
     agencyContactEmail: string | null;
-    scrapedAt: string;
+    // B2B integration metadata - standardized across this portfolio's fleet
+    // so downstream webhook/Zapier/Make consumers need no per-actor parser.
+    record_id: string;
+    event_type: EventType;
+    scraped_at: string;
+    is_new: boolean;
+    source_url: string;
 }
