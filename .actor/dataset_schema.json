@@ -1,0 +1,75 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "actorSpecification": 1,
+    "title": "Dataset Schema",
+    "fields": {
+        "type": "object",
+        "properties": {
+            "gaId": { "title": "GA ID", "type": "string" },
+            "gaUrl": { "title": "GA URL", "type": "string" },
+            "title": { "title": "Title", "type": ["string", "null"] },
+            "variesGaId": {
+                "title": "Varies (base GA ID)",
+                "type": ["string", "null"],
+                "description": "Set when this record is a variation/amendment of an earlier award"
+            },
+            "variesUrl": { "title": "Varies URL", "type": ["string", "null"] },
+            "agency": { "title": "Agency", "type": ["string", "null"] },
+            "publishDate": { "title": "Publish Date", "type": ["string", "null"] },
+            "category": { "title": "Category", "type": ["string", "null"] },
+            "grantTerm": { "title": "Grant Term", "type": ["string", "null"] },
+            "valueAud": { "title": "Value (AUD)", "type": ["string", "null"] },
+            "recipientName": { "title": "Recipient Name", "type": ["string", "null"] },
+            "lastUpdated": { "title": "Last Updated", "type": ["string", "null"] },
+            "approvalDate": { "title": "Approval Date", "type": ["string", "null"] },
+            "variationPublishDate": { "title": "Variation Publish Date", "type": ["string", "null"] },
+            "variationDate": { "title": "Variation Date", "type": ["string", "null"] },
+            "oneOffAdHoc": { "title": "One-off/Ad hoc", "type": ["string", "null"] },
+            "aggregateGrantAward": { "title": "Aggregate Grant Award", "type": ["string", "null"] },
+            "pbsProgramName": { "title": "PBS Program Name", "type": ["string", "null"] },
+            "grantProgram": { "title": "Grant Program", "type": ["string", "null"] },
+            "grantActivity": { "title": "Grant Activity", "type": ["string", "null"] },
+            "purpose": { "title": "Purpose", "type": ["string", "null"] },
+            "goId": {
+                "title": "GO ID",
+                "type": ["string", "null"],
+                "description": "The originating Grant Opportunity, if linked"
+            },
+            "goTitle": { "title": "GO Title", "type": ["string", "null"] },
+            "goUrl": { "title": "GO URL", "type": ["string", "null"] },
+            "internalReferenceId": { "title": "Internal Reference ID", "type": ["string", "null"] },
+            "selectionProcess": { "title": "Selection Process", "type": ["string", "null"] },
+            "confidentialityContract": { "title": "Confidentiality - Contract", "type": ["string", "null"] },
+            "confidentialityOutputs": { "title": "Confidentiality - Outputs", "type": ["string", "null"] },
+            "recipientAbn": { "title": "Recipient ABN", "type": ["string", "null"] },
+            "recipientSuburb": { "title": "Recipient Suburb", "type": ["string", "null"] },
+            "recipientTownCity": { "title": "Recipient Town/City", "type": ["string", "null"] },
+            "recipientPostcode": { "title": "Recipient Postcode", "type": ["string", "null"] },
+            "recipientState": { "title": "Recipient State/Territory", "type": ["string", "null"] },
+            "recipientCountry": { "title": "Recipient Country", "type": ["string", "null"] },
+            "agencyContactPhone": { "title": "Agency Contact Phone", "type": ["string", "null"] },
+            "agencyContactEmail": { "title": "Agency Contact Email", "type": ["string", "null"] },
+            "scrapedAt": { "title": "Scraped at", "type": "string" }
+        }
+    },
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": ["gaId", "title", "agency", "recipientName", "publishDate", "valueAud", "category"]
+            },
+            "display": {
+                "component": "table",
+                "columns": [
+                    { "label": "GA ID", "format": "text", "field": "gaId" },
+                    { "label": "Title", "format": "text", "field": "title" },
+                    { "label": "Agency", "format": "text", "field": "agency" },
+                    { "label": "Recipient", "format": "text", "field": "recipientName" },
+                    { "label": "Publish Date", "format": "text", "field": "publishDate" },
+                    { "label": "Value (AUD)", "format": "text", "field": "valueAud" },
+                    { "label": "Category", "format": "text", "field": "category" }
+                ]
+            }
+        }
+    }
+}

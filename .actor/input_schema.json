@@ -1,0 +1,21 @@
+{
+    "$schema": "https://apify.com/schemas/v1/input.ide.json",
+    "title": "Australia GrantConnect Monitor Configuration",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "maxItems": {
+            "title": "Max Grant Awards to extract",
+            "type": "integer",
+            "description": "Hard cap on the number of Grant Awards returned this run. Results are always sorted newest-first by Publish Date, so a small value with a recurring schedule is the intended usage pattern.",
+            "default": 100,
+            "minimum": 1
+        },
+        "fetchDetail": {
+            "title": "Fetch full detail per Grant Award",
+            "type": "boolean",
+            "description": "When enabled (default), fetches each award's detail page for Purpose, Grant Program, recipient ABN and location, selection process and agency contact. Disable for a faster, listing-only run (still includes recipient, agency, value, category and grant term).",
+            "default": true
+        }
+    }
+}
