@@ -29,6 +29,7 @@ The "institutional-grade" release: same envelope, far more data, and a delta eng
 - The recency window and the "today" bound are computed in Canberra time, so same-morning awards are no longer excluded for ten hours a day.
 - Duplicate rows caused by the listing shifting between page fetches are de-duplicated within a run.
 - The delta memory cap grew from 2,000 ids (about two weeks) to 50,000 timestamped entries (about a year).
+- A new delta memory no longer inherits the v1 store (which was written regardless of filters and could suppress records for a new filter set).
 
 ### Changed
 

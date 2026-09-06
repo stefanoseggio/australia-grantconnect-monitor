@@ -7,7 +7,6 @@ import { Actor, log } from 'apify';
 // each other's "seen" set - the name defaults to a hash of the filter set
 // (see main.ts) and can be pinned explicitly with the `deltaStateName` input.
 const STORE_PREFIX = 'australia-grantconnect-monitor-state';
-const LEGACY_STORE_NAME = 'australia-grantconnect-monitor-delta-state';
 const STATE_KEY = 'state';
 
 // ~150 awards/day means 50,000 entries is roughly a year of history; the
@@ -73,14 +72,12 @@ export async function loadState(
         log.info('Migrating v1 delta state (id list) to v2 (id -> last-updated map).');
         return fromLegacy(stored as LegacyState, filtersSignature);
     }
-    // First run under this name: honour a v1 store left by an earlier version
-    // so upgrading customers do not receive their whole baseline again.
-    const legacyStore = await Actor.openKeyValueStore(LEGACY_STORE_NAME);
-    const legacy = await legacyStore.getValue<LegacyState>(STATE_KEY);
-    if (legacy && Array.isArray(legacy.seenIds) && legacy.seenIds.length > 0) {
-        log.info(`Adopting ${legacy.seenIds.length} ids from the v1 delta store.`);
-        return fromLegacy(legacy, filtersSignature);
-    }
+    // Every delta-state name starts from an empty memory. The v1 store
+    // (`australia-grantconnect-monitor-delta-state`) is deliberately NOT
+    // adopted: v1 wrote it unconditionally regardless of filters, so
+    // inheriting it would silently suppress records for a new filter set
+    // (observed on the platform: a Regional Express award excluded as
+    // "unchanged" on a cold ABN run because a v1 test run had seen it).
     return emptyState(filtersSignature);
 }
 
