@@ -1,8 +1,8 @@
 {
     "name": "australia-grantconnect-monitor",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "type": "module",
-    "description": "Australia GrantConnect Monitor: extracts the Australian Government's whole-of-government Grant Awards register - recipient, agency, value, purpose, program, ABN and location - sorted newest-first.",
+    "description": "GrantConnect Grant Awards Scraper & Monitor: scrape and monitor every Australian Government grant award on grants.gov.au - recipient, ABN, agency, value, purpose, program, location - with server-side filters, delta mode (new / varied / updated awards) and normalised ISO dates and numeric AUD values.",
     "engines": {
         "node": ">=20.0.0"
     },
@@ -14,6 +14,7 @@
         "@apify/eslint-config": "^2.0.0",
         "@apify/tsconfig": "^0.2.0",
         "@types/node": "^24.0.0",
+        "cross-env": "^7.0.3",
         "eslint": "^9.29.0",
         "eslint-config-prettier": "^10.1.5",
         "globals": "^17.0.0",
@@ -32,8 +33,28 @@
         "lint:fix": "eslint --fix",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "test": "vitest run"
+        "test": "vitest run",
+        "test:live": "cross-env LIVE=1 vitest run"
     },
     "author": "Stefano",
-    "license": "ISC"
+    "license": "Apache-2.0",
+    "keywords": [
+        "apify",
+        "actor",
+        "grantconnect",
+        "grants.gov.au",
+        "australian government grants",
+        "grant awards",
+        "grant recipients",
+        "abn",
+        "scraper",
+        "monitor",
+        "delta",
+        "b2b data"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/stefanoseggio/australia-grantconnect-monitor.git"
+    },
+    "homepage": "https://apify.com/stefano_seggio/australia-grantconnect-monitor"
 }

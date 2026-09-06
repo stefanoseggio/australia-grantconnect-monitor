@@ -2,20 +2,20 @@
     "$schema": "https://apify.com/schemas/v1/actor.ide.json",
     "actorSpecification": 1,
     "name": "australia-grantconnect-monitor",
-    "title": "Australia GrantConnect Monitor",
-    "description": "Extracts the Australian Government's whole-of-government Grant Awards register (GrantConnect) - recipient, agency, value, purpose, program, ABN and location - sorted newest-first.",
-    "version": "1.0",
+    "title": "GrantConnect Grant Awards Scraper & Monitor",
+    "description": "Scrape and monitor every Australian Government grant award on GrantConnect (grants.gov.au): recipient, ABN, agency, value, purpose, program, location. Server-side filters (keyword, category, ABN, value, dates), delta mode for new, varied and updated awards, ISO dates, numeric AUD. Pay per result.",
+    "version": "2.0",
     "buildTag": "latest",
     "minMemoryMbytes": 256,
-    "maxMemoryMbytes": 512,
+    "maxMemoryMbytes": 1024,
     "meta": {
-        "templateId": "ts-crawlee-cheerio",
-        "generatedBy": "Claude Code with Claude Sonnet 5"
+        "templateId": "ts-crawlee-cheerio"
     },
     "inputSchema": "./input_schema.json",
     "outputSchema": "./output_schema.json",
     "storages": {
         "dataset": "./dataset_schema.json"
     },
+    "changelog": "../CHANGELOG.md",
     "dockerfile": "../Dockerfile"
 }

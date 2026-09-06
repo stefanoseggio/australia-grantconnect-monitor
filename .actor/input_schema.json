@@ -1,35 +1,269 @@
 {
     "$schema": "https://apify.com/schemas/v1/input.ide.json",
-    "title": "Australia GrantConnect Monitor Configuration",
+    "title": "GrantConnect Grant Awards Scraper & Monitor",
+    "description": "Every filter below is applied by GrantConnect itself (server-side) unless stated otherwise, so narrow runs are fast and cheap. Leave everything empty to walk the whole register, most recently updated first.",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-        "maxItems": {
-            "title": "Max Grant Awards to extract",
-            "type": "integer",
-            "description": "Hard cap on the number of Grant Awards returned this run. Results are always sorted newest-first by Publish Date, so a small value with a recurring schedule is the intended usage pattern.",
-            "default": 100,
-            "minimum": 1
+        "keyword": {
+            "sectionCaption": "Filters",
+            "sectionDescription": "Mirror of GrantConnect's own Advanced Search. Combine freely - e.g. category Health + value over $1M + last 30 days.",
+            "title": "Keyword(s)",
+            "type": "string",
+            "description": "Full-text search over grant title, purpose and activity (also accepts a GA ID such as GA578886). Matching mode below.",
+            "editor": "textfield",
+            "prefill": ""
         },
-        "fetchDetail": {
-            "title": "Fetch full detail per Grant Award",
-            "type": "boolean",
-            "description": "When enabled (default), fetches each award's detail page for Purpose, Grant Program, recipient ABN and location, selection process and agency contact. Disable for a faster, listing-only run (still includes recipient, agency, value, category and grant term).",
-            "default": true
+        "keywordMatch": {
+            "title": "Keyword matching",
+            "type": "string",
+            "description": "How the keyword(s) must match.",
+            "editor": "select",
+            "enum": ["AllWord", "AnyWord", "ExactPhrase"],
+            "enumTitles": ["All of the words", "Any of the words", "Exact phrase"],
+            "default": "AllWord"
+        },
+        "categories": {
+            "title": "Categories",
+            "type": "array",
+            "description": "GrantConnect's 29 top-level categories. Select several to get their union. The record's own 'category' field shows the finer sub-category label (e.g. 'Medical Research').",
+            "editor": "select",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "381",
+                    "101",
+                    "111",
+                    "121",
+                    "131",
+                    "141",
+                    "151",
+                    "161",
+                    "371",
+                    "171",
+                    "181",
+                    "191",
+                    "201",
+                    "211",
+                    "221",
+                    "231",
+                    "241",
+                    "251",
+                    "261",
+                    "271",
+                    "281",
+                    "291",
+                    "301",
+                    "311",
+                    "321",
+                    "331",
+                    "341",
+                    "351",
+                    "361"
+                ],
+                "enumTitles": [
+                    "Academic Research",
+                    "Ageing",
+                    "Agriculture",
+                    "Arts and Culture",
+                    "Children, Youth and Youth at Risk",
+                    "Community Development",
+                    "Crime, Justice and Legal Issues",
+                    "Cultural and Linguistic Diversity",
+                    "Diplomacy Services",
+                    "Disability",
+                    "Disaster Relief",
+                    "Education",
+                    "Employment and Training",
+                    "Environment, Energy and Resources",
+                    "Government and Politics",
+                    "Health, Wellbeing and Medical Research",
+                    "Housing and Homelessness",
+                    "Indigenous",
+                    "Industry",
+                    "Information and Communication",
+                    "International Aid and Development",
+                    "Local Government",
+                    "Philanthropy, Voluntarism and Not-for-Profits Infrastructure",
+                    "Recreation and Sport",
+                    "Science and Technology",
+                    "Social Inclusion and Social Justice",
+                    "Trade and Tourism",
+                    "Transport and Infrastructure",
+                    "Veterans and Defence"
+                ]
+            },
+            "default": []
+        },
+        "agencyNameContains": {
+            "title": "Agency name contains",
+            "type": "string",
+            "description": "Case-insensitive substring match on the awarding agency, e.g. 'Health' or 'Infrastructure'. Applied client-side (GrantConnect's public form has no agency parameter), so combine it with a category, keyword or date window to keep the walk short.",
+            "editor": "textfield"
+        },
+        "recipientName": {
+            "title": "Recipient name contains",
+            "type": "string",
+            "description": "Substring match on the recipient's legal name, e.g. 'Monash University' or 'Regional Express'.",
+            "editor": "textfield"
+        },
+        "recipientAbn": {
+            "title": "Recipient ABN",
+            "type": "string",
+            "description": "Exact match on the recipient's 11-digit Australian Business Number (spaces optional). Returns every Commonwealth grant that entity has received.",
+            "editor": "textfield",
+            "pattern": "^\\s*\\d{2}\\s?\\d{3}\\s?\\d{3}\\s?\\d{3}\\s*$"
+        },
+        "minValueAud": {
+            "title": "Minimum value (AUD)",
+            "type": "integer",
+            "description": "Only awards worth at least this amount. Tip: 1000000 narrows the 360,000-record register to roughly 28,000.",
+            "editor": "number",
+            "minimum": 0,
+            "unit": "AUD"
+        },
+        "maxValueAud": {
+            "title": "Maximum value (AUD)",
+            "type": "integer",
+            "description": "Only awards worth at most this amount.",
+            "editor": "number",
+            "minimum": 0,
+            "unit": "AUD"
+        },
+        "goId": {
+            "title": "Grant Opportunity ID",
+            "type": "string",
+            "description": "All awards made under one Grant Opportunity (funding round), e.g. GO6105.",
+            "editor": "textfield",
+            "pattern": "^\\s*[Gg][Oo]\\d+\\s*$"
+        },
+        "dateType": {
+            "title": "Date field for the window",
+            "type": "string",
+            "description": "Which date the 'from'/'to' window applies to. 'Current' = grants running today and 'Closed' = grants whose term has ended (both ignore the window).",
+            "editor": "select",
+            "enum": ["Publish Date", "Approval Date", "Start Date", "End Date", "Current", "Closed"],
+            "enumTitles": [
+                "Publish date (when it appeared on GrantConnect)",
+                "Approval date",
+                "Grant start date",
+                "Grant end date",
+                "Currently running grants",
+                "Closed grants"
+            ],
+            "default": "Publish Date"
+        },
+        "dateFrom": {
+            "title": "Date from",
+            "type": "string",
+            "description": "Absolute (2026-07-01) or relative ('7 days', '3 months', '1 year' back from today, Canberra time). Leave empty for the whole archive (December 2017 onwards).",
+            "editor": "datepicker",
+            "dateType": "absoluteOrRelative"
+        },
+        "dateTo": {
+            "title": "Date to",
+            "type": "string",
+            "description": "Absolute or relative upper bound of the window. Leave empty for 'today'.",
+            "editor": "datepicker",
+            "dateType": "absoluteOrRelative"
+        },
+        "oneOffAdHoc": {
+            "title": "One-off / ad hoc grants",
+            "type": "string",
+            "description": "Ad hoc grants (no competitive round) are the ones probity and integrity teams watch most closely.",
+            "editor": "select",
+            "enum": ["any", "yes", "no"],
+            "enumTitles": ["Any", "Only one-off / ad hoc", "Exclude one-off / ad hoc"],
+            "default": "any"
+        },
+        "aggregateGrantAward": {
+            "title": "Aggregate grant awards",
+            "type": "string",
+            "description": "Aggregate awards bundle several recipients into one record ('Multiple').",
+            "editor": "select",
+            "enum": ["any", "yes", "no"],
+            "enumTitles": ["Any", "Only aggregate awards", "Exclude aggregate awards"],
+            "default": "any"
+        },
+        "eventTypes": {
+            "title": "Event types to deliver",
+            "type": "array",
+            "description": "NEW_LISTING = a brand-new award; AWARD_VARIATION = a variation/amendment record (value or term changed, e.g. GA270901-V1); UPDATED = an award you already received whose 'Last Updated' stamp moved (delta mode only).",
+            "editor": "select",
+            "items": {
+                "type": "string",
+                "enum": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED"],
+                "enumTitles": ["New awards", "Variations / amendments", "Updates to known awards"]
+            },
+            "default": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED"]
         },
         "onlyNew": {
-            "title": "Delta mode - only new records since last run",
+            "sectionCaption": "Monitoring (delta mode)",
+            "sectionDescription": "Turn on 'Only new' and put the Actor on a schedule: each run returns only what changed on GrantConnect since the previous run, in seconds.",
+            "title": "Only new / changed since the last run",
             "type": "boolean",
-            "description": "When enabled, persists seen GA IDs between runs (in this actor's own key-value store) and returns only records not seen in a prior run. The listing is verified sorted newest-first by Publish Date, so pagination stops as soon as it reaches already-seen records - a scheduled run resolves in seconds instead of walking the full 360,000+ record archive. Recommended for recurring monitoring; leave off for a full one-off extraction.",
+            "description": "Remembers every award it has delivered (per filter set, in a named key-value store) and returns only awards that are new, varied or updated since. The walk stops as soon as it reaches already-known records, so a scheduled run costs a few pages instead of the whole register.",
+            "default": false,
+            "prefill": true
+        },
+        "sortBy": {
+            "title": "Order",
+            "type": "string",
+            "description": "'Last updated' (recommended, and required for reliable monitoring): variations and corrections of old awards keep their original publish date, so only this order surfaces them. 'Relevance' needs a keyword.",
+            "editor": "select",
+            "enum": ["Last Updated", "Publish Date", "Relevance"],
+            "enumTitles": [
+                "Last updated (newest activity first)",
+                "Publish date (newest publication first)",
+                "Relevance (keyword searches)"
+            ],
+            "default": "Last Updated"
+        },
+        "deltaStateName": {
+            "title": "Delta state name",
+            "type": "string",
+            "description": "Optional label for the memory of a monitoring task. Defaults to a fingerprint of your filters, so different schedules never interfere. Set the same name on two tasks to make them share one memory.",
+            "editor": "textfield",
+            "pattern": "^[A-Za-z0-9-]{1,30}$"
+        },
+        "resetState": {
+            "title": "Reset delta memory before this run",
+            "type": "boolean",
+            "description": "Forget every previously delivered award for this delta state and re-baseline (the run then returns up to 'Max records' most recently updated awards).",
             "default": false
         },
+        "maxItems": {
+            "sectionCaption": "Limits & performance",
+            "title": "Max records per run",
+            "type": "integer",
+            "description": "Hard cap on delivered records (and therefore on cost: you pay per record). In delta mode anything beyond the cap is simply delivered by the next run.",
+            "editor": "number",
+            "default": 100,
+            "minimum": 1,
+            "maximum": 100000,
+            "unit": "records"
+        },
+        "fetchDetail": {
+            "title": "Fetch full detail per award",
+            "type": "boolean",
+            "description": "Opens each award's page (one extra request) for recipient ABN and location, delivery location, purpose, program, Grant Opportunity link, selection process, confidentiality flags and the agency contact. Off = listing-only summary records (cheaper 'result-summary' price).",
+            "default": true
+        },
+        "maxConcurrency": {
+            "title": "Parallel detail requests",
+            "type": "integer",
+            "description": "How many award pages are fetched at once. GrantConnect tolerates 10 comfortably; 5 keeps a 500-record run under two minutes.",
+            "editor": "number",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 10
+        },
         "dateRange": {
-            "title": "Filter by recency (Publish Date)",
+            "title": "Legacy recency preset (deprecated - use 'Date from')",
             "type": "string",
-            "description": "Optionally restrict results to records whose own Publish Date falls within this window. Independent of onlyNew - Publish Date is the field this register is ordered by and matched the live fetch date for the newest records when verified, so (unlike some other registers in this portfolio) it is not known to lag real publication.",
-            "editor": "select",
-            "enum": ["24h", "7d", "30d"],
-            "enumTitles": ["Last 24 hours", "Last 7 days", "Last 30 days"]
+            "description": "Kept for tasks created with version 1: '24h', '7d' or '30d' are interpreted as 'Date from'.",
+            "editor": "hidden",
+            "pattern": "^(24h|7d|30d)$"
         }
     }
 }

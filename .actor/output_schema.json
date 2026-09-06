@@ -1,12 +1,47 @@
 {
     "$schema": "https://apify.com/schemas/v1/output.ide.json",
     "actorOutputSchemaVersion": 1,
-    "title": "Output schema",
+    "title": "GrantConnect Grant Awards output",
     "properties": {
         "results": {
             "type": "string",
-            "title": "Results",
+            "title": "All records (JSON)",
             "template": "{{links.apiDefaultDatasetUrl}}/items"
+        },
+        "resultsNewestFirst": {
+            "type": "string",
+            "title": "All records, newest first (JSON)",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?desc=true"
+        },
+        "csv": {
+            "type": "string",
+            "title": "CSV export",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?format=csv&desc=true"
+        },
+        "excel": {
+            "type": "string",
+            "title": "Excel export",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?format=xlsx&desc=true"
+        },
+        "overview": {
+            "type": "string",
+            "title": "Overview view",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?view=overview&desc=true"
+        },
+        "recipients": {
+            "type": "string",
+            "title": "Recipient directory view",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?view=recipients&desc=true"
+        },
+        "variations": {
+            "type": "string",
+            "title": "Variations & updates view",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?view=variations&desc=true"
+        },
+        "runSummary": {
+            "type": "string",
+            "title": "Run summary (counts, total matching on GrantConnect, delta store)",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/OUTPUT"
         }
     }
 }
