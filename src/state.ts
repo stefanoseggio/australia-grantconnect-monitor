@@ -20,6 +20,13 @@ export interface DeltaState {
     lastRunAt: string | null;
     /** Newest lastUpdatedIso delivered so far - the watermark that bounds a delta walk. */
     watermark: string | null;
+    /**
+     * Set when a delta walk was cut short by maxItems: the lastUpdatedIso of
+     * the oldest row the walk reached. Rows older than this may still be
+     * undelivered, so the next walk must not early-stop (nor apply the
+     * watermark) before it has passed this floor. Cleared by a complete walk.
+     */
+    backlogFloor: string | null;
     filtersSignature: string | null;
 }
 
@@ -29,7 +36,7 @@ interface LegacyState {
 }
 
 export function emptyState(filtersSignature: string | null): DeltaState {
-    return { version: 2, seen: {}, lastRunAt: null, watermark: null, filtersSignature };
+    return { version: 2, seen: {}, lastRunAt: null, watermark: null, backlogFloor: null, filtersSignature };
 }
 
 export function stateStoreName(deltaStateName: string): string {
@@ -61,6 +68,7 @@ export async function loadState(
     const stored = await store.getValue<DeltaState | LegacyState>(STATE_KEY);
     if (stored && (stored as DeltaState).version === 2) {
         const state = stored as DeltaState;
+        state.backlogFloor ??= null; // states written before the backlog floor existed
         if (state.filtersSignature && filtersSignature && state.filtersSignature !== filtersSignature) {
             log.warning(
                 `Delta store "${storeName}" was built with a different filter set - records matching the new filters but already seen under the old ones will not be re-delivered. Use resetState=true to re-baseline.`,
@@ -85,6 +93,21 @@ export async function loadState(
 export function markSeen(state: DeltaState, gaId: string, lastUpdatedIso: string | null): void {
     state.seen[gaId] = lastUpdatedIso ?? '';
     if (lastUpdatedIso && (!state.watermark || lastUpdatedIso > state.watermark)) state.watermark = lastUpdatedIso;
+}
+
+/**
+ * After a delta walk: remember how deep an INCOMPLETE walk got (so the next
+ * run keeps walking past the known block down to the undelivered rows), or
+ * clear the floor once a walk ran to its natural end.
+ */
+export function recordWalkCoverage(state: DeltaState, truncated: boolean, oldestReachedIso: string | null): void {
+    if (!truncated) {
+        state.backlogFloor = null;
+        return;
+    }
+    if (!oldestReachedIso) return; // nothing usable to anchor on - keep whatever floor exists
+    state.backlogFloor =
+        state.backlogFloor && state.backlogFloor < oldestReachedIso ? state.backlogFloor : oldestReachedIso;
 }
 
 /** Keep the map bounded: drop the entries with the oldest last-updated instants first. */

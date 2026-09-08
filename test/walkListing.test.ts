@@ -166,6 +166,30 @@ describe('walkListing against real captured fixtures', () => {
         expect(onlyVariations.excluded.every((c) => c.excludedBy === 'eventType')).toBe(true);
     });
 
+    it('delta: a backlog floor from a truncated walk suppresses the early-stop inside the already-delivered block', async () => {
+        // Pages 1-2 = the block a previous (maxItems-truncated) run delivered (same 4-Sep rows,
+        // page 2 re-keyed to distinct ids); page 3 = rows that run never reached; page 4 = end.
+        const PAGE2_KNOWN = LISTING_PAGE1.replace(/GA5788(\d\d)/g, 'GA8888$1');
+        const PAGE3_UNSEEN = LISTING_PAGE1.replace(/GA5788(\d\d)/g, 'GA9988$1');
+        servePages(LISTING_PAGE1, PAGE2_KNOWN, PAGE3_UNSEEN);
+        const seen: Record<string, string> = {};
+        for (const item of [...page1Items, ...parseListingArticles(cheerio.load(PAGE2_KNOWN))]) {
+            seen[item.gaId] = parseSiteDateTime(item.lastUpdated) ?? '';
+        }
+        const watermark = '2026-09-04T06:16:00.000Z'; // newest delivered row
+
+        // Without a floor the two known pages trigger the early-stop and page 3 is stranded forever.
+        const stranded = await walk({ onlyNew: true, seen, watermark });
+        expect(stranded.stopReason).toBe('delta-early-stop');
+        expect(stranded.candidates).toEqual([]);
+
+        // With the floor (older than every delivered row) the walk keeps going and finds page 3.
+        const recovered = await walk({ onlyNew: true, seen, watermark, backlogFloor: '2026-09-03T00:00:00.000Z' });
+        expect(recovered.candidates.length).toBe(15);
+        expect(recovered.candidates.every((c) => c.item.gaId.startsWith('GA9988'))).toBe(true);
+        expect(recovered.stopReason).toBe('end-of-results');
+    });
+
     it('refuses to mistake a blocked/maintenance page for "nothing new" - it retries, then fails loudly', async () => {
         fetchWithRetryMock.mockResolvedValue(BLOCKED);
         await expect(walk()).rejects.toThrow(/not a Grant Award listing/);

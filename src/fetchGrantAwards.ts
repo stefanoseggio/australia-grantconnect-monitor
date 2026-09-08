@@ -45,6 +45,13 @@ export interface WalkOptions {
     seen: Readonly<Record<string, string>>;
     /** Newest lastUpdatedIso delivered by a previous run, or null on a cold start. */
     watermark: string | null;
+    /**
+     * lastUpdatedIso of the oldest row reached by a previous walk that was cut
+     * short by maxItems (rows older than it may be undelivered). While set,
+     * pages at or above it never count towards the early-stop and the
+     * watermark stop is deferred below it. Null when the last walk completed.
+     */
+    backlogFloor?: string | null;
     agencyNameContains: string | null;
     eventTypes: ReadonlySet<EventType>;
 }
@@ -112,13 +119,24 @@ async function loadListingPage(filters: ListingFilters, page: number) {
  */
 export async function walkListing(options: WalkOptions): Promise<WalkResult> {
     const { filters, maxItems, onlyNew, seen, watermark, agencyNameContains, eventTypes } = options;
+    const backlogFloor = options.backlogFloor ?? null;
     const candidates: Candidate[] = [];
     const excluded: Candidate[] = [];
     const walkedIds = new Set<string>();
     const agencyNeedle = agencyNameContains?.trim().toLowerCase() || null;
-    const watermarkCutoff = watermark
-        ? new Date(new Date(watermark).getTime() - WATERMARK_MARGIN_MS).toISOString()
-        : null;
+    const minusMargin = (iso: string): string => new Date(new Date(iso).getTime() - WATERMARK_MARGIN_MS).toISOString();
+    // The watermark stop must never fire above an outstanding backlog: take
+    // the older of the two bounds when a floor is set.
+    const watermarkCutoff =
+        [watermark, backlogFloor]
+            .filter((v): v is string => v !== null)
+            .map(minusMargin)
+            .sort()[0] ?? null;
+    if (backlogFloor) {
+        log.info(
+            `Previous delta walk was cut short - walking past the known block down to ${backlogFloor} before trusting the early-stop.`,
+        );
+    }
 
     let totalMatching: number | null = null;
     let consecutiveKnownPages = 0;
@@ -140,6 +158,7 @@ export async function walkListing(options: WalkOptions): Promise<WalkResult> {
 
         let pageHasChanges = false;
         let pageAllBelowWatermark = watermarkCutoff !== null;
+        let pageAllBelowFloor = true; // vacuously true when no floor is set
         for (const item of listing.items) {
             if (walkedIds.has(item.gaId)) continue; // the listing shifted under us between two page fetches
             walkedIds.add(item.gaId);
@@ -148,6 +167,7 @@ export async function walkListing(options: WalkOptions): Promise<WalkResult> {
             const { eventType, isNew, changed } = classify(item, lastUpdatedIso, seen);
             if (changed) pageHasChanges = true;
             if (!lastUpdatedIso || !watermarkCutoff || lastUpdatedIso >= watermarkCutoff) pageAllBelowWatermark = false;
+            if (backlogFloor && (!lastUpdatedIso || lastUpdatedIso >= backlogFloor)) pageAllBelowFloor = false;
 
             const candidate: Candidate = { item, eventType, isNew, lastUpdatedIso, excludedBy: null };
             if (onlyNew && !changed) candidate.excludedBy = 'unchanged';
@@ -161,7 +181,7 @@ export async function walkListing(options: WalkOptions): Promise<WalkResult> {
             }
             if (candidates.length >= maxItems) {
                 log.warning(
-                    `maxItems=${maxItems} reached on page ${page} - at least one more matching record was NOT delivered this run (it stays undelivered and will be picked up by the next delta run; raise maxItems to catch up faster).`,
+                    `maxItems=${maxItems} reached on page ${page} - at least one more matching record was NOT delivered this run. In delta mode the walk position is remembered and the next run continues past the already-delivered block; raise maxItems to catch up faster.`,
                 );
                 return {
                     candidates,
@@ -180,7 +200,11 @@ export async function walkListing(options: WalkOptions): Promise<WalkResult> {
         log.info(`Page ${page}: ${listing.items.length} rows, ${candidates.length} to deliver so far${matchingNote}`);
 
         if (onlyNew) {
-            consecutiveKnownPages = pageHasChanges ? 0 : consecutiveKnownPages + 1;
+            // A fully-known page only counts towards the early-stop once the walk
+            // is below any outstanding backlog floor: the block of rows delivered
+            // by the truncated run sits ABOVE the rows it never reached.
+            if (pageHasChanges) consecutiveKnownPages = 0;
+            else if (pageAllBelowFloor) consecutiveKnownPages += 1;
             if (consecutiveKnownPages >= CONSECUTIVE_KNOWN_PAGES_TO_STOP) {
                 log.info(
                     `Delta early-stop at page ${page}: ${CONSECUTIVE_KNOWN_PAGES_TO_STOP} consecutive pages with nothing new or updated.`,

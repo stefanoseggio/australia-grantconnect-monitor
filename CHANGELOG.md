@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 - 2026-09-07
+
+### Fixed
+
+- **Stranded backlog in delta mode**: when a run stopped at `maxItems` with more matching rows below, the next run could early-stop inside the block it had already delivered (two fully-known pages) and never reach the older undelivered rows. The delta memory now records a _backlog floor_ (how deep the truncated walk got); the next run walks through the known block down to that floor before trusting the early-stop or the watermark, then clears it. Reported by the fleet-wide verification of the UK HSE actor and fixed here too.
+
 ## 2.0.0 - 2026-09-06
 
 The "institutional-grade" release: same envelope, far more data, and a delta engine that finally sees everything GrantConnect changes.

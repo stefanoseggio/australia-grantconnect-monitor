@@ -152,7 +152,15 @@ watermark, lastRunAt, filtersSignature }`), v1 migration, 50k-entry prune.
    additionally, under `Last Updated` order, a page whose rows are all older
    than `watermark - 3 days` stops the walk (bounds the cost even if the seen
    map was pruned or reset).
-4. `maxItems` truncation never marks the overflow as seen; it logs a warning.
+4. `maxItems` truncation never marks the overflow as seen; it logs a warning
+   AND records a **backlog floor** (`state.backlogFloor` = lastUpdatedIso of
+   the oldest row the truncated walk reached). While the floor is set, pages
+   at or above it never count towards the 2-known-pages early-stop and the
+   watermark cutoff is moved below the floor, so the next run walks through
+   the block it already delivered down to the rows it never reached. A walk
+   that ends naturally (end / no-more-pages / early-stop / watermark) clears
+   the floor. Without this, a backlog older than two pages of delivered rows
+   would be stranded forever (found by the HSE verifier, fixed fleet-wide).
 5. The delta store name defaults to `auto-<hash of filters>` (dates and
    maxItems/fetchDetail excluded from the hash), so distinct schedules never
    share memory unless `deltaStateName` says so.

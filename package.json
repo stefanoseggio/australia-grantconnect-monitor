@@ -1,6 +1,6 @@
 {
     "name": "australia-grantconnect-monitor",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "type": "module",
     "description": "GrantConnect Grant Awards Scraper & Monitor: scrape and monitor every Australian Government grant award on grants.gov.au - recipient, ABN, agency, value, purpose, program, location - with server-side filters, delta mode (new / varied / updated awards) and normalised ISO dates and numeric AUD values.",
     "engines": {

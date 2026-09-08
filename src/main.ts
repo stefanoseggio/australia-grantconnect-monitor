@@ -4,7 +4,7 @@ import type { Candidate, WalkResult } from './fetchGrantAwards.js';
 import { enrichBatch, walkListing } from './fetchGrantAwards.js';
 import { resolveInput } from './input.js';
 import type { DeltaState } from './state.js';
-import { loadState, markSeen, saveState, stateStoreName } from './state.js';
+import { loadState, markSeen, recordWalkCoverage, saveState, stateStoreName } from './state.js';
 import type { GrantAwardRecord } from './types.js';
 import { listingUrl } from './urls.js';
 
@@ -43,7 +43,7 @@ async function run(): Promise<void> {
     const storeName = stateStoreName(options.deltaStateName);
     const state = await loadState(storeName, resolved.filtersSignature, options.resetState);
     log.info(
-        `Delta state store: ${storeName} (${Object.keys(state.seen).length} known ids, watermark ${state.watermark ?? 'none'})`,
+        `Delta state store: ${storeName} (${Object.keys(state.seen).length} known ids, watermark ${state.watermark ?? 'none'}, backlog floor ${state.backlogFloor ?? 'none'})`,
     );
 
     const walk = await walkListing({
@@ -52,9 +52,20 @@ async function run(): Promise<void> {
         onlyNew: options.onlyNew,
         seen: state.seen,
         watermark: state.watermark,
+        backlogFloor: options.onlyNew ? state.backlogFloor : null,
         agencyNameContains: options.agencyNameContains,
         eventTypes: options.eventTypes,
     });
+    if (options.onlyNew) {
+        // Candidates are in walk order (newest-first); the last one is the
+        // oldest row this walk reached - everything older is unexplored.
+        recordWalkCoverage(state, walk.truncatedByMaxItems, walk.candidates.at(-1)?.lastUpdatedIso ?? null);
+        if (walk.truncatedByMaxItems) {
+            log.warning(
+                `Backlog floor set to ${state.backlogFloor ?? 'n/a'} - the next delta run will continue below the block delivered now.`,
+            );
+        }
+    }
     const matched = walk.totalMatching !== null ? walk.totalMatching.toLocaleString('en-AU') : 'unknown';
     log.info(
         `Walk finished: ${walk.candidates.length} to deliver, ${walk.excluded.length} excluded, ${walk.pagesWalked} page(s), stop=${walk.stopReason}, ${matched} matching on GrantConnect.`,
@@ -86,6 +97,7 @@ async function run(): Promise<void> {
         mode: options.onlyNew ? 'delta' : 'full',
         deltaStateStore: storeName,
         knownIdsAfterRun: Object.keys(state.seen).length,
+        backlogFloor: state.backlogFloor,
         listingUrl: listingUrl(filters),
         runAt,
     };

@@ -78,7 +78,15 @@ describe('main.ts delivery semantics', () => {
         // so the undelivered ones are the newest - exactly where the next walk starts.
         const stateEntry = [...kv.entries()].find(([k]) => k === 'state');
         expect(stateEntry).toBeDefined();
-        const state = stateEntry![1] as { seen: Record<string, string>; watermark: string | null; lastRunAt: string };
+        const state = stateEntry![1] as {
+            seen: Record<string, string>;
+            watermark: string | null;
+            backlogFloor: string | null;
+            lastRunAt: string;
+        };
+        // maxItems (10) < rows on the page (15): the walk was truncated, so the floor marks the
+        // oldest row it reached and the next run will not early-stop above it.
+        expect(state.backlogFloor).toMatch(/^2026-09-04T/);
         const deliveredIds = pushed.map((r) => r.gaId as string);
         expect(Object.keys(state.seen).sort()).toEqual([...deliveredIds].sort());
         expect(state.lastRunAt).toBeTruthy();
