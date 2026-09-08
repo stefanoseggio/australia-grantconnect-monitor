@@ -4,7 +4,7 @@ import type { Candidate, WalkResult } from './fetchGrantAwards.js';
 import { enrichBatch, walkListing } from './fetchGrantAwards.js';
 import { resolveInput } from './input.js';
 import type { DeltaState } from './state.js';
-import { loadState, markSeen, recordWalkCoverage, saveState, stateStoreName } from './state.js';
+import { isColdState, loadState, markSeen, recordWalkCoverage, saveState, stateStoreName } from './state.js';
 import type { GrantAwardRecord } from './types.js';
 import { listingUrl } from './urls.js';
 
@@ -42,8 +42,9 @@ async function run(): Promise<void> {
 
     const storeName = stateStoreName(options.deltaStateName);
     const state = await loadState(storeName, resolved.filtersSignature, options.resetState);
+    const cold = isColdState(state);
     log.info(
-        `Delta state store: ${storeName} (${Object.keys(state.seen).length} known ids, watermark ${state.watermark ?? 'none'}, backlog floor ${state.backlogFloor ?? 'none'})`,
+        `Delta state store: ${storeName} (${cold ? 'cold - this run sets the baseline' : `${Object.keys(state.seen).length} known ids`}, watermark ${state.watermark ?? 'none'}, backlog floor ${state.backlogFloor ?? 'none'}, baseline floor ${state.baselineFloor ?? 'none'})`,
     );
 
     const walk = await walkListing({
@@ -53,14 +54,19 @@ async function run(): Promise<void> {
         seen: state.seen,
         watermark: state.watermark,
         backlogFloor: options.onlyNew ? state.backlogFloor : null,
+        baselineFloor: options.onlyNew ? state.baselineFloor : null,
         agencyNameContains: options.agencyNameContains,
         eventTypes: options.eventTypes,
     });
     if (options.onlyNew) {
         // Candidates are in walk order (newest-first); the last one is the
         // oldest row this walk reached - everything older is unexplored.
-        recordWalkCoverage(state, walk.truncatedByMaxItems, walk.candidates.at(-1)?.lastUpdatedIso ?? null);
-        if (walk.truncatedByMaxItems) {
+        recordWalkCoverage(state, cold, walk.truncatedByMaxItems, walk.candidates.at(-1)?.lastUpdatedIso ?? null);
+        if (walk.truncatedByMaxItems && cold) {
+            log.info(
+                `Baseline set at ${state.baselineFloor ?? 'n/a'}: this first run delivers the ${walk.candidates.length} most recently updated awards; older activity is history and later runs return only what is new, varied or updated after it.`,
+            );
+        } else if (walk.truncatedByMaxItems) {
             log.warning(
                 `Backlog floor set to ${state.backlogFloor ?? 'n/a'} - the next delta run will continue below the block delivered now.`,
             );
@@ -98,6 +104,7 @@ async function run(): Promise<void> {
         deltaStateStore: storeName,
         knownIdsAfterRun: Object.keys(state.seen).length,
         backlogFloor: state.backlogFloor,
+        baselineFloor: state.baselineFloor,
         listingUrl: listingUrl(filters),
         runAt,
     };

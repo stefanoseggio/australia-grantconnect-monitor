@@ -27,6 +27,13 @@ export interface DeltaState {
      * watermark) before it has passed this floor. Cleared by a complete walk.
      */
     backlogFloor: string | null;
+    /**
+     * Set once, by the FIRST (cold) delta run when maxItems cut its walk
+     * short: the lastUpdatedIso of the oldest row it delivered. Rows whose
+     * last activity is older are history - never delivered by later runs -
+     * so the first run really is a baseline and does not drain the register.
+     */
+    baselineFloor: string | null;
     filtersSignature: string | null;
 }
 
@@ -36,7 +43,20 @@ interface LegacyState {
 }
 
 export function emptyState(filtersSignature: string | null): DeltaState {
-    return { version: 2, seen: {}, lastRunAt: null, watermark: null, backlogFloor: null, filtersSignature };
+    return {
+        version: 2,
+        seen: {},
+        lastRunAt: null,
+        watermark: null,
+        backlogFloor: null,
+        baselineFloor: null,
+        filtersSignature,
+    };
+}
+
+/** A store that has never completed a run - the next delta run establishes the baseline. */
+export function isColdState(state: DeltaState): boolean {
+    return state.lastRunAt === null && Object.keys(state.seen).length === 0;
 }
 
 export function stateStoreName(deltaStateName: string): string {
@@ -68,7 +88,8 @@ export async function loadState(
     const stored = await store.getValue<DeltaState | LegacyState>(STATE_KEY);
     if (stored && (stored as DeltaState).version === 2) {
         const state = stored as DeltaState;
-        state.backlogFloor ??= null; // states written before the backlog floor existed
+        state.backlogFloor ??= null; // states written before the floors existed
+        state.baselineFloor ??= null;
         if (state.filtersSignature && filtersSignature && state.filtersSignature !== filtersSignature) {
             log.warning(
                 `Delta store "${storeName}" was built with a different filter set - records matching the new filters but already seen under the old ones will not be re-delivered. Use resetState=true to re-baseline.`,
@@ -100,7 +121,19 @@ export function markSeen(state: DeltaState, gaId: string, lastUpdatedIso: string
  * run keeps walking past the known block down to the undelivered rows), or
  * clear the floor once a walk ran to its natural end.
  */
-export function recordWalkCoverage(state: DeltaState, truncated: boolean, oldestReachedIso: string | null): void {
+export function recordWalkCoverage(
+    state: DeltaState,
+    cold: boolean,
+    truncated: boolean,
+    oldestReachedIso: string | null,
+): void {
+    if (cold) {
+        // The first run defines the baseline: whatever it could not deliver is
+        // history, not backlog. (An untruncated cold run saw everything.)
+        state.baselineFloor = truncated ? oldestReachedIso : null;
+        state.backlogFloor = null;
+        return;
+    }
     if (!truncated) {
         state.backlogFloor = null;
         return;

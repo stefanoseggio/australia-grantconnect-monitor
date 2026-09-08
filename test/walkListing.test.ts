@@ -190,6 +190,29 @@ describe('walkListing against real captured fixtures', () => {
         expect(recovered.stopReason).toBe('end-of-results');
     });
 
+    it('delta: a baseline floor from a truncated COLD run keeps older unseen rows out - history, not backlog', async () => {
+        // Page 1 = the block the cold run delivered (4-Sep rows, now known); page 2 = older
+        // rows (2022-2023 activity) the cold run never reached. They must stay undelivered.
+        servePages(LISTING_PAGE1, LISTING_WITH_VARIATION);
+        const seen: Record<string, string> = {};
+        for (const item of page1Items) seen[item.gaId] = parseSiteDateTime(item.lastUpdated) ?? '';
+
+        const drained = await walk({ onlyNew: true, seen, watermark: '2026-09-04T06:16:00.000Z' });
+        expect(drained.candidates.length).toBe(15); // without a baseline the register would drain
+        expect(drained.stopReason).toBe('delta-watermark'); // (the old rows are also below the watermark)
+
+        const baseline = await walk({
+            onlyNew: true,
+            seen,
+            watermark: '2026-09-04T06:16:00.000Z',
+            baselineFloor: '2026-09-03T14:00:00.000Z',
+        });
+        expect(baseline.candidates).toEqual([]);
+        expect(baseline.excluded.filter((c) => c.excludedBy === 'baseline').length).toBe(15);
+        expect(baseline.stopReason).toBe('delta-early-stop'); // history pages count as known pages
+        expect(fetchWithRetryMock).toHaveBeenCalledTimes(4); // 2 (drained) + 2 (baseline)
+    });
+
     it('refuses to mistake a blocked/maintenance page for "nothing new" - it retries, then fails loudly', async () => {
         fetchWithRetryMock.mockResolvedValue(BLOCKED);
         await expect(walk()).rejects.toThrow(/not a Grant Award listing/);

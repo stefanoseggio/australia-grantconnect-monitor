@@ -5,6 +5,7 @@
 ### Fixed
 
 - **Stranded backlog in delta mode**: when a run stopped at `maxItems` with more matching rows below, the next run could early-stop inside the block it had already delivered (two fully-known pages) and never reach the older undelivered rows. The delta memory now records a _backlog floor_ (how deep the truncated walk got); the next run walks through the known block down to that floor before trusting the early-stop or the watermark, then clears it. Reported by the fleet-wide verification of the UK HSE actor and fixed here too.
+- **First-run baseline**: a cold delta run cut short by `maxItems` now records a _baseline floor_; unseen awards whose last activity is older are treated as history and never delivered by later runs, so a cheap first run no longer turns every following run into a slow drain of the archive.
 
 ## 2.0.0 - 2026-09-06
 

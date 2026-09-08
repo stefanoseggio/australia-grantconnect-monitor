@@ -152,8 +152,15 @@ watermark, lastRunAt, filtersSignature }`), v1 migration, 50k-entry prune.
    additionally, under `Last Updated` order, a page whose rows are all older
    than `watermark - 3 days` stops the walk (bounds the cost even if the seen
    map was pruned or reset).
-4. `maxItems` truncation never marks the overflow as seen; it logs a warning
-   AND records a **backlog floor** (`state.backlogFloor` = lastUpdatedIso of
+4. A COLD delta run (no seen entries, no lastRunAt) cut short by `maxItems`
+   defines the **baseline**: `state.baselineFloor` = lastUpdatedIso of the
+   oldest row it delivered. On later runs an unseen row with older activity
+   is excluded as `'baseline'` (history), does not count as a change for the
+   early-stop, and is marked seen at the end so an in-place update can still
+   surface as UPDATED. Without this, a cheap first run would make every later
+   run drain the archive `maxItems` at a time. Only `resetState` clears it.
+   A NON-cold run cut short by `maxItems` never marks the overflow as seen;
+   it logs a warning AND records a **backlog floor** (`state.backlogFloor` = lastUpdatedIso of
    the oldest row the truncated walk reached). While the floor is set, pages
    at or above it never count towards the 2-known-pages early-stop and the
    watermark cutoff is moved below the floor, so the next run walks through

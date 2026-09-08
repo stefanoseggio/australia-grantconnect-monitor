@@ -82,11 +82,14 @@ describe('main.ts delivery semantics', () => {
             seen: Record<string, string>;
             watermark: string | null;
             backlogFloor: string | null;
+            baselineFloor: string | null;
             lastRunAt: string;
         };
-        // maxItems (10) < rows on the page (15): the walk was truncated, so the floor marks the
-        // oldest row it reached and the next run will not early-stop above it.
-        expect(state.backlogFloor).toMatch(/^2026-09-04T/);
+        // This is a COLD run (empty store) cut short by maxItems (10 < 15 rows): it defines the
+        // baseline - the oldest row it reached becomes the floor below which unseen rows are
+        // history - and leaves no backlog behind.
+        expect(state.baselineFloor).toMatch(/^2026-09-04T/);
+        expect(state.backlogFloor).toBeNull();
         const deliveredIds = pushed.map((r) => r.gaId as string);
         expect(Object.keys(state.seen).sort()).toEqual([...deliveredIds].sort());
         expect(state.lastRunAt).toBeTruthy();

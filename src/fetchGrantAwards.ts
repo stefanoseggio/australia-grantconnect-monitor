@@ -27,7 +27,7 @@ import type { EventType, GrantAwardRecord, ListingFilters } from './types.js';
 import { DATA_SOURCE_ATTRIBUTION } from './types.js';
 import { listingPath } from './urls.js';
 
-export type ExclusionReason = 'unchanged' | 'agency' | 'eventType';
+export type ExclusionReason = 'unchanged' | 'baseline' | 'agency' | 'eventType';
 
 export interface Candidate {
     item: ListingItem;
@@ -52,6 +52,12 @@ export interface WalkOptions {
      * watermark stop is deferred below it. Null when the last walk completed.
      */
     backlogFloor?: string | null;
+    /**
+     * lastUpdatedIso of the oldest row the FIRST delta run delivered when its
+     * walk was cut short. Unseen rows with older activity are history and are
+     * excluded ('baseline') instead of being delivered on later runs.
+     */
+    baselineFloor?: string | null;
     agencyNameContains: string | null;
     eventTypes: ReadonlySet<EventType>;
 }
@@ -120,6 +126,7 @@ async function loadListingPage(filters: ListingFilters, page: number) {
 export async function walkListing(options: WalkOptions): Promise<WalkResult> {
     const { filters, maxItems, onlyNew, seen, watermark, agencyNameContains, eventTypes } = options;
     const backlogFloor = options.backlogFloor ?? null;
+    const baselineFloor = onlyNew ? (options.baselineFloor ?? null) : null;
     const candidates: Candidate[] = [];
     const excluded: Candidate[] = [];
     const walkedIds = new Set<string>();
@@ -165,12 +172,21 @@ export async function walkListing(options: WalkOptions): Promise<WalkResult> {
 
             const lastUpdatedIso = parseSiteDateTime(item.lastUpdated);
             const { eventType, isNew, changed } = classify(item, lastUpdatedIso, seen);
-            if (changed) pageHasChanges = true;
+            // Unseen rows whose last activity predates the baseline are history,
+            // not news: they neither get delivered nor keep the walk alive.
+            // `<=`: GrantConnect stamps whole batches of variations with the same
+            // minute, so rows sharing the baseline's own timestamp belong to the
+            // baseline batch too (seen live: a 10-row cap leaked the rest of a
+            // 22:01 batch as "new" on the next run).
+            const belowBaseline =
+                isNew && baselineFloor !== null && lastUpdatedIso !== null && lastUpdatedIso <= baselineFloor;
+            if (changed && !belowBaseline) pageHasChanges = true;
             if (!lastUpdatedIso || !watermarkCutoff || lastUpdatedIso >= watermarkCutoff) pageAllBelowWatermark = false;
             if (backlogFloor && (!lastUpdatedIso || lastUpdatedIso >= backlogFloor)) pageAllBelowFloor = false;
 
             const candidate: Candidate = { item, eventType, isNew, lastUpdatedIso, excludedBy: null };
             if (onlyNew && !changed) candidate.excludedBy = 'unchanged';
+            else if (belowBaseline) candidate.excludedBy = 'baseline';
             else if (agencyNeedle && !(item.agency ?? '').toLowerCase().includes(agencyNeedle))
                 candidate.excludedBy = 'agency';
             else if (!eventTypes.has(eventType)) candidate.excludedBy = 'eventType';
