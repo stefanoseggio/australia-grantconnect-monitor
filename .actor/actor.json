@@ -1,21 +1,24 @@
 {
-    "$schema": "https://apify.com/schemas/v1/actor.ide.json",
-    "actorSpecification": 1,
-    "name": "australia-grantconnect-monitor",
-    "title": "GrantConnect Grant Awards Scraper & Monitor",
-    "description": "Scrape and monitor every Australian Government grant award on GrantConnect (grants.gov.au): recipient, ABN, agency, value, purpose, program, location. Server-side filters (keyword, category, ABN, value, dates), delta mode for new, varied and updated awards, ISO dates, numeric AUD. Pay per result.",
-    "version": "2.0",
-    "buildTag": "latest",
-    "minMemoryMbytes": 256,
-    "maxMemoryMbytes": 1024,
-    "meta": {
-        "templateId": "ts-crawlee-cheerio"
-    },
-    "inputSchema": "./input_schema.json",
-    "outputSchema": "./output_schema.json",
-    "storages": {
-        "dataset": "./dataset_schema.json"
-    },
-    "changelog": "../CHANGELOG.md",
-    "dockerfile": "../Dockerfile"
+  "$schema": "https://apify.com/schemas/v1/actor.ide.json",
+  "actorSpecification": 1,
+  "name": "australia-grantconnect-monitor",
+  "title": "GrantConnect grants.gov.au - Grant Awards Delta Feed",
+  "description": "Monitor every Australian Government grant award on GrantConnect (grants.gov.au): recipient, ABN, agency, value, purpose, program and location. Server-side filters (keyword, category, ABN, value, dates), delta mode flags new, varied and updated awards, ISO dates, numeric AUD. Pay per result.",
+  "version": "2.0",
+  "buildTag": "latest",
+  "minMemoryMbytes": 256,
+  "maxMemoryMbytes": 1024,
+  "meta": {
+    "templateId": "ts-crawlee-cheerio"
+  },
+  "inputSchema": "./input_schema.json",
+  "outputSchema": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "changelog": "../CHANGELOG.md",
+  "dockerfile": "../Dockerfile",
+  "categories": [
+    "BUSINESS"
+  ]
 }
