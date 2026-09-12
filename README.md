@@ -1,5 +1,12 @@
 # Australian Government Grants Monitor - GrantConnect Awards Tracker (Grant Intelligence)
 
+[![Built for Apify](https://img.shields.io/badge/Built%20for-Apify-FF9012?logo=apify&logoColor=white)](https://apify.com)
+[![Pay-Per-Event](https://img.shields.io/badge/Pay--Per--Event-from%20%240.001-brightgreen)](https://apify.com/stefano_seggio/australia-grantconnect-monitor)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Actor-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
+
+[![Run on Apify](https://apify.com/ext/run-on-apify.png)](https://apify.com/stefano_seggio/australia-grantconnect-monitor)
+
 ## Executive Value Proposition
 
 GrantConnect (grants.gov.au) is the only complete, official record of who received Commonwealth grant money, from which agency, under which program and for how much - but the public site offers only a 15-rows-per-screen search form and a manual report capped at 50,000 rows, with no API, no CSV feed, no RSS and no email alert for awards (GrantConnect's own notifications cover funding *opportunities*, not awards already made). This Actor replaces that page-by-page browsing with structured JSON, CSV or Excel in minutes: the same filters as GrantConnect's Advanced Search run server-side, so a narrow query touches a handful of pages instead of the whole 360,000-record register, and every value arrives normalised (ISO dates, numeric AUD, checksummed ABN) instead of needing manual cleanup. Put it on a schedule with delta mode on and each run after the first returns only the awards that were published, varied or updated since the previous one - the ongoing monitoring GrantConnect itself does not offer.
@@ -45,6 +52,21 @@ Every filter is applied server-side by GrantConnect itself unless marked client-
 | `maxConcurrency` | integer | `5` | Parallel detail-page requests, 1-10 |
 
 More ready-to-run examples: a full-archive daily monitor (`{ "onlyNew": true, "maxItems": 500 }`), an ABN lookup (`{ "recipientAbn": "46 101 325 642", "maxItems": 1000 }`), or ad hoc grants only (`{ "oneOffAdHoc": "yes", "dateType": "Approval Date", "dateFrom": "30 days", "fetchDetail": false }`).
+
+## Quick start
+
+Run it from the [Apify Console](https://apify.com/stefano_seggio/australia-grantconnect-monitor), the API, or the CLI:
+
+```bash
+apify call australia-grantconnect-monitor --input '{
+  "categories": ["231"],
+  "minValueAud": 500000,
+  "onlyNew": true,
+  "maxItems": 500
+}'
+```
+
+That pulls Health, Wellbeing and Medical Research awards worth $500k+, in delta mode - the first run baselines, every scheduled run after it delivers only what GrantConnect published, varied or updated since. Swap the CLI for the `apify-client` SDK ([JS](https://docs.apify.com/api/client/js/) / [Python](https://docs.apify.com/api/client/python/)) to run it from your own code - see `examples/quickstart.js` and `examples/quickstart.py` in this repo for both.
 
 ## Output
 
@@ -107,18 +129,22 @@ Delta mode (`onlyNew: true`) is a stateful watermark walk, not a page diff:
 - Sorting by **Last Updated** rather than Publish Date is what makes variations and corrections visible at all: GrantConnect publishes a variation record (e.g. `GA270901-V1`) under the *original* award's publish date, so a publish-date-ordered walk would find it 100,000+ rows deep on the day it appears; ordered by Last Updated it is on page one and tagged `UPDATED` or `AWARD_VARIATION`.
 - The Actor validates that every page it reads is a genuine listing page and fails the run loudly on a blocked, maintenance or unrecognised page, rather than reporting a false "0 results, success" - so a scheduled monitor alerts you if GrantConnect's markup changes instead of silently going quiet.
 
-## Pricing
+## Pricing (Pay-Per-Event)
 
 Pay per event, platform usage included - you pay only for delivered records, never for compute:
 
-| Event | Price | When |
-| --- | --- | --- |
-| `result` | $0.003 per award | A record with the full detail page (80+ fields, `fetchDetail: true`) |
-| `result-summary` | $0.001 per award | Listing-only record (`fetchDetail: false`, or a detail page that could not be fetched) |
-| Actor start | $0.00005 | Once per run |
+| Event | Title | Price | When |
+| --- | --- | --- | --- |
+| `result` | Grant Award (full detail) | $0.003 per event | A record with the full detail page (80+ fields, `fetchDetail: true`) |
+| `result-summary` | Grant Award (listing summary) | $0.001 per event | Listing-only record (`fetchDetail: false`, or a detail page that could not be fetched) |
+| Actor start | - | $0.00005 | Once per run |
 
 A daily monitor that finds a few dozen new or varied awards costs a few cents a day; a quiet run with nothing new costs only the start fee. A 500-record filtered pull with full detail runs to a few dollars; a large listing-only backfill (`fetchDetail: false`) is proportionally cheaper per record. Check the Actor's pricing tab for the current rate card before running at scale.
 
 ## Support & Enterprise SLA
 
 This is an independently developed and maintained Actor, not a vendor product with a contracted enterprise SLA - please size expectations accordingly. Bug reports and feature requests go through the **Issues** tab on the Apify Store listing; issues are typically triaged within about a business day to two (roughly 48 hours), and versioned fixes are listed in the Actor's Changelog tab. Known scope limits are disclosed rather than hidden: Grant Opportunities (open funding rounds) are a separate register not covered here, `UPDATED` flags that a record changed without a field-level diff of what changed, and a full 360,000-record archive pull is possible but large enough that slicing by category or date is recommended instead.
+
+---
+
+This Actor is part of **Delta Registry** - pay-per-event regulatory & compliance data infrastructure built and operated by Stefano Seggio. For professional inquiries or enterprise licensing, connect on [LinkedIn](https://www.linkedin.com/in/stefanoseggio-deltaregistry); for the rest of the fleet, see [github.com/stefanoseggio](https://github.com/stefanoseggio).
