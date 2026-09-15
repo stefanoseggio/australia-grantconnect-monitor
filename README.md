@@ -129,6 +129,42 @@ Delta mode (`onlyNew: true`) is a stateful watermark walk, not a page diff:
 - Sorting by **Last Updated** rather than Publish Date is what makes variations and corrections visible at all: GrantConnect publishes a variation record (e.g. `GA270901-V1`) under the *original* award's publish date, so a publish-date-ordered walk would find it 100,000+ rows deep on the day it appears; ordered by Last Updated it is on page one and tagged `UPDATED` or `AWARD_VARIATION`.
 - The Actor validates that every page it reads is a genuine listing page and fails the run loudly on a blocked, maintenance or unrecognised page, rather than reporting a false "0 results, success" - so a scheduled monitor alerts you if GrantConnect's markup changes instead of silently going quiet.
 
+## Instant Terminal Run (cURL)
+
+Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/gt7wS4T0uFRXDz49n/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "maxItems": 50,
+  "onlyNew": true
+}'
+```
+
+## Sample Extracted Dataset (JSON)
+
+One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
+
+```json
+{
+  "record_id": "GA578886",
+  "event_type": "NEW_LISTING",
+  "scraped_at": "2026-09-06T10:15:57.202Z",
+  "is_new": true,
+  "source_url": "https://www.grants.gov.au/Ga/Show/937de059-5cbb-415f-bc83-bcb5619e1379",
+  "gaId": "GA578886",
+  "title": "The Activity is to support low volume and/or new commercial airline routes to regional and remote communities",
+  "agency": "Department of Infrastructure, Transport, Regional Development, Communications, Sport and the Arts",
+  "valueAud": "$225,000.00",
+  "valueAudNumber": 225000,
+  "recipientName": "Regional Express Pty Ltd",
+  "recipientAbn": "46 101 325 642",
+  "recipientAbnValid": true,
+  "recipientState": "NSW"
+}
+```
+
 ## Pricing (Pay-Per-Event)
 
 Pay per event, platform usage included - you pay only for delivered records, never for compute:
