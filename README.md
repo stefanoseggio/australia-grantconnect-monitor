@@ -7,6 +7,8 @@
 
 [![Run on Apify](https://apify.com/ext/run-on-apify.png)](https://apify.com/stefano_seggio/australia-grantconnect-monitor)
 
+**This Actor monitors GrantConnect (grants.gov.au) — Australia's official, 360,000+ record register of Commonwealth grant awards, which has no public API — on a schedule you configure, delivering only what's new, varied or updated since your last run.**
+
 ## Executive Value Proposition
 
 GrantConnect (grants.gov.au) is the only complete, official record of who received Commonwealth grant money, from which agency, under which program and for how much - but the public site offers only a 15-rows-per-screen search form and a manual report capped at 50,000 rows, with no API, no CSV feed, no RSS and no email alert for awards (GrantConnect's own notifications cover funding *opportunities*, not awards already made). This Actor replaces that page-by-page browsing with structured JSON, CSV or Excel in minutes: the same filters as GrantConnect's Advanced Search run server-side, so a narrow query touches a handful of pages instead of the whole 360,000-record register, and every value arrives normalised (ISO dates, numeric AUD, checksummed ABN) instead of needing manual cleanup. Put it on a schedule with delta mode on and each run after the first returns only the awards that were published, varied or updated since the previous one - the ongoing monitoring GrantConnect itself does not offer.
@@ -17,7 +19,101 @@ GrantConnect (grants.gov.au) is the only complete, official record of who receiv
 - **Nonprofit and university funding-intelligence teams** scout which programs are funding peers in their sector this week (filter by `categories` and `recipientName`), and use `grantEndDateIso` / `daysUntilGrantEnd` to build a grants renewal calendar and spot consortium targets before a program's next round opens.
 - **Government-relations and market-intelligence teams** watch a specific competitor, ABN or portfolio agency for a new or varied award (`recipientAbn`, `agency`, `event_type`, `isOneOffAdHoc`) to brief clients or prepare for Senate Estimates, and journalists use the same fields plus `selectionProcess` / `isContractConfidential` to flag large, closed or non-competitive grants worth a story or an FOI request.
 
-## Input
+## Cost & BYOK Disclosure
+
+**Pricing model:** pay-per-event. You are billed only for delivered records plus a small flat per-run start fee — never for idle compute, and never for a record whose content hasn't changed since your last run.
+
+| Event | What it means | Price |
+| --- | --- | --- |
+| `result` | A Grant Award record delivered with full award-page detail (`fetchDetail: true`, 80+ fields) | Pay-per-result — see the [live Store pricing tab](https://apify.com/stefano_seggio/australia-grantconnect-monitor) for the current exact rate |
+| `result-summary` | A listing-only Grant Award record (`fetchDetail: false`, or a detail page that could not be fetched) | Pay-per-result — see the live Store pricing tab for the current exact rate |
+| Actor start | Charged once per run, regardless of how many records are delivered | See the live Store pricing tab for the current exact rate |
+
+Specific per-event rates have appeared in this Actor's own Store listing and in earlier README revisions; the Store's **Pricing** tab is the single, always-current source of truth, so it's linked above rather than a number restated here that could drift out of date. As a rule of thumb: a daily monitor that finds a few dozen new or varied awards costs a few cents a day, and a quiet run with nothing new costs only the start fee — always confirm the live rate before estimating cost at scale.
+
+**Delta suppression, never a refund.** In delta mode (`onlyNew: true`), this Actor keeps a persisted watermark per filter set (see "Reliability & Delta Engine" below): a Grant Award whose `lastUpdatedIso` hasn't moved past what was already delivered is never pushed to the dataset and therefore never billed. That check happens *before* delivery on every run — it is not a refund applied after an unchanged record was already charged.
+
+**BYOK:** This Actor requires no third-party API key. GrantConnect is a public Australian Government register with no login wall or provider key of any kind — every dependency it uses is free and already included in the Actor's price.
+
+## Quickstart
+
+Run it from the [Apify Console](https://apify.com/stefano_seggio/australia-grantconnect-monitor), the CLI, the REST API, or the `apify-client` SDK in Python or Node.js. Every example below pulls Health, Wellbeing and Medical Research awards worth $500k+, in delta mode - the first run baselines, every scheduled run after it delivers only what GrantConnect published, varied or updated since.
+
+### Apify CLI
+
+```bash
+apify call australia-grantconnect-monitor --input '{
+  "categories": ["231"],
+  "minValueAud": 500000,
+  "onlyNew": true,
+  "maxItems": 500
+}'
+```
+
+### cURL (instant, synchronous)
+
+Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/gt7wS4T0uFRXDz49n/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "maxItems": 50,
+  "onlyNew": true
+}'
+```
+
+### Python (`apify-client`)
+
+```python
+import os
+from apify_client import ApifyClient
+
+client = ApifyClient(os.environ["APIFY_TOKEN"])
+
+run = client.actor("stefano_seggio/australia-grantconnect-monitor").call(
+    run_input={
+        "categories": ["231"],
+        "minValueAud": 500000,
+        "onlyNew": True,
+        "maxItems": 500,
+        "fetchDetail": True,
+    }
+)
+
+dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
+for item in dataset_items:
+    print(f"{item['gaId']} | {item['recipientName']} | {item['valueAud']} | {item['agency']}")
+```
+
+A full runnable version of this script is at `examples/quickstart.py` in this repo.
+
+### Node.js (`apify-client`)
+
+```javascript
+import { ApifyClient } from 'apify-client';
+
+const client = new ApifyClient({ token: process.env.APIFY_TOKEN });
+
+const run = await client.actor('stefano_seggio/australia-grantconnect-monitor').call({
+  categories: ['231'],
+  minValueAud: 500000,
+  onlyNew: true,
+  maxItems: 500,
+  fetchDetail: true,
+});
+
+const { items } = await client.dataset(run.defaultDatasetId).listItems();
+for (const item of items) {
+  console.log(`${item.gaId} | ${item.recipientName} | ${item.valueAud} | ${item.agency}`);
+}
+```
+
+A full runnable version (CommonJS) is at `examples/quickstart.js` in this repo.
+
+## Input & Output Schema
+
+### Input
 
 Every filter is applied server-side by GrantConnect itself unless marked client-side, so a narrow run is fast and cheap. Leave everything empty to walk the whole register, most recently updated first.
 
@@ -53,24 +149,9 @@ Every filter is applied server-side by GrantConnect itself unless marked client-
 
 More ready-to-run examples: a full-archive daily monitor (`{ "onlyNew": true, "maxItems": 500 }`), an ABN lookup (`{ "recipientAbn": "46 101 325 642", "maxItems": 1000 }`), or ad hoc grants only (`{ "oneOffAdHoc": "yes", "dateType": "Approval Date", "dateFrom": "30 days", "fetchDetail": false }`).
 
-## Quick start
+### Output
 
-Run it from the [Apify Console](https://apify.com/stefano_seggio/australia-grantconnect-monitor), the API, or the CLI:
-
-```bash
-apify call australia-grantconnect-monitor --input '{
-  "categories": ["231"],
-  "minValueAud": 500000,
-  "onlyNew": true,
-  "maxItems": 500
-}'
-```
-
-That pulls Health, Wellbeing and Medical Research awards worth $500k+, in delta mode - the first run baselines, every scheduled run after it delivers only what GrantConnect published, varied or updated since. Swap the CLI for the `apify-client` SDK ([JS](https://docs.apify.com/api/client/js/) / [Python](https://docs.apify.com/api/client/python/)) to run it from your own code - see `examples/quickstart.js` and `examples/quickstart.py` in this repo for both.
-
-## Output
-
-One item per Grant Award record (fields trimmed for length here; every detail-fetched record carries 80+ fields):
+One item per Grant Award record (fields trimmed for length here; every detail-fetched record carries 80+ fields). This is a real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
 
 ```json
 {
@@ -113,11 +194,30 @@ One item per Grant Award record (fields trimmed for length here; every detail-fe
 }
 ```
 
-A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso`.
+A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso"`.
 
-Fields group into: an **integration envelope** (`record_id`, `event_type`, `scraped_at`, `is_new`, `source_url`, `data_source` - identical across this developer's public-register Actors); **identity and listing data** (`gaId`, `title`, `agency`, `category`, `publishDateIso`, `lastUpdatedIso`, `valueAud` / `valueAudNumber` / `valueBand`, `grantStartDateIso` / `grantEndDateIso` / `grantTermDays` / `daysUntilGrantEnd` / `isCurrent`, `financialYear`, `recipientName`); **recipient data** (`recipientAbn` / `recipientAbnNormalized` / `recipientAbnValid` / `abrLookupUrl`, `recipientSuburb`, `recipientState`, `recipientPostcode`, `recipientEntityType`); **detail fields** fetched from the award page when `fetchDetail` is on (`approvalDateIso`, `purpose`, `grantProgram`, `grantActivity`, `goId` / `goTitle` / `goUrl`, `selectionProcess`, `isOneOffAdHoc`, `isAggregate`, confidentiality flags, `agencyContactName` / `Phone` / `Email`); and **delivery location** (`deliveryState`, `deliveryPostcode`, `deliverySuburb`, `deliveryCountry` - where the money is spent, which can differ from the recipient's own address). The Output tab also exposes five ready-made dataset views (Overview, Recipient directory, Programs & opportunities, Grant terms & expiry, Variations & updates) plus CSV, Excel and newest-first JSON links.
+| Field | Description |
+| --- | --- |
+| `record_id`, `event_type`, `scraped_at`, `is_new`, `source_url`, `data_source` | Integration envelope, identical across this developer's public-register Actors |
+| `gaId` | GrantConnect's own award identifier; suffixed `-V1`, `-V2` etc. for a variation record |
+| `title`, `purpose`, `grantProgram`, `grantActivity` | The award's own title, funded purpose, and the program/activity it was made under |
+| `agency`, `category` | The Commonwealth agency that made the award, and its GrantConnect category |
+| `publishDateIso`, `lastUpdatedIso`, `approvalDateIso` | When the award was published, last changed on GrantConnect, and approved |
+| `valueAud`, `valueAudNumber`, `valueBand` | The award's value as GrantConnect displays it, as a plain number, and bucketed into a value band |
+| `grantStartDateIso`, `grantEndDateIso`, `daysUntilGrantEnd`, `isCurrent`, `financialYear` | The grant's term and how much of it remains |
+| `recipientName`, `recipientEntityType` | The recipient's legal name and entity type (e.g. company, individual) |
+| `recipientAbn`, `recipientAbnNormalized`, `recipientAbnValid`, `abrLookupUrl` | The recipient's Australian Business Number as displayed, digits-only, whether it passes ABN checksum validation, and a ready link to the Australian Business Register |
+| `recipientState`, `recipientSuburb`, `recipientPostcode` | The recipient's registered location |
+| `deliveryState`, `deliveryPostcode`, `deliverySuburb`, `deliveryCountry` | Where the grant money is actually spent, which can differ from the recipient's own address |
+| `selectionProcess`, `isOneOffAdHoc`, `isAggregate` | How the award was selected, and whether it's a one-off/ad hoc or a multi-recipient aggregate award |
+| `isContractConfidential` | Whether GrantConnect flags the award's contract terms as confidential |
+| `goId`, `goTitle`, `goUrl` | The Grant Opportunity (funding round) this award was made under, and a link to it |
+| `agencyContactName`, `agencyContactPhone`, `agencyContactEmail` | The awarding agency's published contact for this grant |
+| `detailFetched` | Whether the award's detail page was actually opened this run (`fetchDetail: true`) or this is a listing-only summary |
 
-## Reliability
+The Output tab also exposes five ready-made dataset views (Overview, Recipient directory, Programs & opportunities, Grant terms & expiry, Variations & updates) plus CSV, Excel and newest-first JSON links.
+
+## Reliability & Delta Engine
 
 Delta mode (`onlyNew: true`) is a stateful watermark walk, not a page diff:
 
@@ -129,53 +229,20 @@ Delta mode (`onlyNew: true`) is a stateful watermark walk, not a page diff:
 - Sorting by **Last Updated** rather than Publish Date is what makes variations and corrections visible at all: GrantConnect publishes a variation record (e.g. `GA270901-V1`) under the *original* award's publish date, so a publish-date-ordered walk would find it 100,000+ rows deep on the day it appears; ordered by Last Updated it is on page one and tagged `UPDATED` or `AWARD_VARIATION`.
 - The Actor validates that every page it reads is a genuine listing page and fails the run loudly on a blocked, maintenance or unrecognised page, rather than reporting a false "0 results, success" - so a scheduled monitor alerts you if GrantConnect's markup changes instead of silently going quiet.
 
-## Instant Terminal Run (cURL)
+## Contributing & Local Setup
 
-Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
+This repository contains the Actor's real, buildable TypeScript source (`src/`), not just documentation - so local development against real data is genuinely possible:
 
 ```bash
-curl -X POST "https://api.apify.com/v2/acts/gt7wS4T0uFRXDz49n/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-  "maxItems": 50,
-  "onlyNew": true
-}'
+git clone https://github.com/stefanoseggio/australia-grantconnect-monitor.git
+cd australia-grantconnect-monitor
+npm install
+apify login              # paste your Apify API token
+npm run start:dev        # tsx src/main.ts - runs the Actor locally against the real GrantConnect site
+npm test                 # vitest run
 ```
 
-## Sample Extracted Dataset (JSON)
-
-One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
-
-```json
-{
-  "record_id": "GA578886",
-  "event_type": "NEW_LISTING",
-  "scraped_at": "2026-09-06T10:15:57.202Z",
-  "is_new": true,
-  "source_url": "https://www.grants.gov.au/Ga/Show/937de059-5cbb-415f-bc83-bcb5619e1379",
-  "gaId": "GA578886",
-  "title": "The Activity is to support low volume and/or new commercial airline routes to regional and remote communities",
-  "agency": "Department of Infrastructure, Transport, Regional Development, Communications, Sport and the Arts",
-  "valueAud": "$225,000.00",
-  "valueAudNumber": 225000,
-  "recipientName": "Regional Express Pty Ltd",
-  "recipientAbn": "46 101 325 642",
-  "recipientAbnValid": true,
-  "recipientState": "NSW"
-}
-```
-
-## Pricing (Pay-Per-Event)
-
-Pay per event, platform usage included - you pay only for delivered records, never for compute:
-
-| Event | Title | Price | When |
-| --- | --- | --- | --- |
-| `result` | Grant Award (full detail) | $0.003 per event | A record with the full detail page (80+ fields, `fetchDetail: true`) |
-| `result-summary` | Grant Award (listing summary) | $0.001 per event | Listing-only record (`fetchDetail: false`, or a detail page that could not be fetched) |
-| Actor start | - | $0.00005 | Once per run |
-
-A daily monitor that finds a few dozen new or varied awards costs a few cents a day; a quiet run with nothing new costs only the start fee. A 500-record filtered pull with full detail runs to a few dollars; a large listing-only backfill (`fetchDetail: false`) is proportionally cheaper per record. Check the Actor's pricing tab for the current rate card before running at scale.
+`npm run build` compiles with `tsc`, and `npm run lint` / `npm run format` run this repo's ESLint/Prettier config. Found a bug, or want a new filter, output field or jurisdiction covered? Open an issue or pull request on this GitHub repo, or use the **Issues** tab on the [Apify Store listing](https://apify.com/stefano_seggio/australia-grantconnect-monitor) for operational reports against the live Actor.
 
 ## Support & Enterprise SLA
 
