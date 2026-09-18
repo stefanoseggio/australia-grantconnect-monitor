@@ -249,7 +249,7 @@ One item per Grant Award record (fields trimmed for length here; every detail-fe
 }
 ```
 
-A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso"`.
+A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso`.
 
 | Field | Description |
 | --- | --- |
