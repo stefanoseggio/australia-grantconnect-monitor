@@ -46,7 +46,7 @@ const FILTERS: ListingFilters = {
     isAggregate: null,
     orderBy: 'Last Updated',
 };
-const ALL_EVENTS = new Set(['NEW_LISTING', 'AWARD_VARIATION', 'UPDATED'] as const);
+const ALL_EVENTS = new Set(['NEW_LISTING', 'AWARD_VARIATION', 'UPDATED', 'UNCHANGED'] as const);
 const NOW = new Date('2026-09-06T12:00:00.000Z');
 
 function pageOf(path: string): number {
@@ -91,6 +91,28 @@ describe('walkListing against real captured fixtures', () => {
         const v = result.candidates.find((c) => c.item.gaId === 'GA270901-V1');
         expect(v?.eventType).toBe('AWARD_VARIATION');
         expect(result.candidates.find((c) => c.item.variesGaId === null)?.eventType).toBe('NEW_LISTING');
+    });
+
+    it('full mode: an already-delivered row whose Last Updated has not advanced is delivered as UNCHANGED, never re-labeled NEW_LISTING/AWARD_VARIATION', async () => {
+        servePages(LISTING_WITH_VARIATION);
+        const items = parseListingArticles(cheerio.load(LISTING_WITH_VARIATION));
+        // Warm seen map: every row already delivered, keyed to its OWN current
+        // lastUpdatedIso (not advanced) - simulates a second onlyNew:false run
+        // over a filter set this Actor has already walked once.
+        const seen: Record<string, string> = {};
+        for (const item of items) seen[item.gaId] = parseSiteDateTime(item.lastUpdated) ?? '';
+
+        const result = await walk({ onlyNew: false, seen });
+
+        // Full mode still delivers everything matching the filters, warm or not.
+        expect(result.candidates.length).toBe(items.length);
+        expect(result.excluded).toEqual([]);
+        for (const c of result.candidates) {
+            expect(c.eventType).toBe('UNCHANGED');
+            expect(c.eventType).not.toBe('NEW_LISTING');
+            expect(c.eventType).not.toBe('AWARD_VARIATION');
+            expect(c.isNew).toBe(false);
+        }
     });
 
     it('de-duplicates rows that repeat across pages when the listing shifts under the walk', async () => {

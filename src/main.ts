@@ -114,6 +114,7 @@ async function run(): Promise<void> {
     if (byType.NEW_LISTING) parts.push(`${byType.NEW_LISTING} new`);
     if (byType.AWARD_VARIATION) parts.push(`${byType.AWARD_VARIATION} variations`);
     if (byType.UPDATED) parts.push(`${byType.UPDATED} updated`);
+    if (byType.UNCHANGED) parts.push(`${byType.UNCHANGED} unchanged`);
     if (summary.detailFailed) parts.push(`${summary.detailFailed} without detail`);
     if (walk.truncatedByMaxItems) parts.push('maxItems reached - more available');
     if (delivery.chargeLimitReached) parts.push('spending limit reached');

@@ -15,8 +15,8 @@
             "event_type": {
                 "type": "string",
                 "title": "Event type",
-                "description": "NEW_LISTING, AWARD_VARIATION or UPDATED (a previously delivered award whose Last Updated stamp moved).",
-                "enum": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED"]
+                "description": "NEW_LISTING, AWARD_VARIATION, UPDATED (a previously delivered award whose Last Updated stamp moved) or UNCHANGED (a previously delivered award re-served as-is by a full, non-delta run).",
+                "enum": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED", "UNCHANGED"]
             },
             "scraped_at": {
                 "type": "string",

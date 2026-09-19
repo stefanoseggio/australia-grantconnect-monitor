@@ -188,14 +188,14 @@
         "eventTypes": {
             "title": "Event types to deliver",
             "type": "array",
-            "description": "NEW_LISTING = a brand-new award; AWARD_VARIATION = a variation/amendment record (value or term changed, e.g. GA270901-V1); UPDATED = an award you already received whose 'Last Updated' stamp moved (delta mode only).",
+            "description": "NEW_LISTING = a brand-new award; AWARD_VARIATION = a variation/amendment record (value or term changed, e.g. GA270901-V1); UPDATED = an award you already received whose 'Last Updated' stamp moved (delta mode only); UNCHANGED = an award you already received whose 'Last Updated' stamp has NOT moved - only ever delivered when 'Only new' is off, since delta mode never delivers these at all.",
             "editor": "select",
             "items": {
                 "type": "string",
-                "enum": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED"],
-                "enumTitles": ["New awards", "Variations / amendments", "Updates to known awards"]
+                "enum": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED", "UNCHANGED"],
+                "enumTitles": ["New awards", "Variations / amendments", "Updates to known awards", "Already-delivered, unchanged (full mode only)"]
             },
-            "default": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED"]
+            "default": ["NEW_LISTING", "AWARD_VARIATION", "UPDATED", "UNCHANGED"]
         },
         "onlyNew": {
             "sectionCaption": "Monitoring (delta mode)",
