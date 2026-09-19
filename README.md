@@ -249,7 +249,7 @@ One item per Grant Award record (fields trimmed for length here; every detail-fe
 }
 ```
 
-A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso"`.
+A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso`.
 
 Run with `onlyNew: false` (the default) against a filter set you've already run before, and the same award comes back with `"event_type": "UNCHANGED"`, `"is_new": false` once its `lastUpdatedIso` stops advancing - it is being re-served as part of that run's full matching set, not re-announced as new. Delta mode (`onlyNew: true`) never delivers `UNCHANGED` rows at all; they're suppressed before delivery (see "Reliability & Delta Engine").
 
