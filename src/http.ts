@@ -1,6 +1,16 @@
 import { log } from 'apify';
+import { Impit } from 'impit';
 
 export const BASE_URL = 'https://www.grants.gov.au';
+
+// One Impit instance per actor run: it holds the connection pool and TLS
+// session cache, and gives every request a real, internally-consistent
+// Chrome TLS/HTTP2 fingerprint instead of Node's native (and distinctively
+// bot-shaped) one - directly relevant here since this host already gates on
+// User-Agent (see below); a mismatched TLS fingerprint alongside a Chrome UA
+// header is the kind of inconsistency more sophisticated bot detection looks
+// for. See AGENTS.md.
+const impit = new Impit({ browser: 'chrome' });
 
 // grants.gov.au sits behind CloudFront with a header-based bot filter -
 // verified live 2026-09-06: a request with no User-Agent (or curl's default
@@ -66,7 +76,7 @@ export async function fetchWithRetry(path: string, options: FetchOptions = {}): 
     let lastError: Error = new Error('unreachable');
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            const response = await fetch(url, {
+            const response = await impit.fetch(url, {
                 headers: BROWSER_HEADERS,
                 redirect: 'follow',
                 signal: AbortSignal.timeout(timeoutMs),
