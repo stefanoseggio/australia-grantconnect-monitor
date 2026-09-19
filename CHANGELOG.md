@@ -1,5 +1,28 @@
 # Changelog
 
+## [3.0.0](https://github.com/stefanoseggio/australia-grantconnect-monitor/compare/australia-grantconnect-monitor-v2.0.1...australia-grantconnect-monitor-v3.0.0) (2026-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* v2.0 - server-side filters, Last Updated delta engine, 84-field records, crash-safe delivery
+
+### Features
+
+* Australia GrantConnect Monitor - Grant Awards register ([bd6d808](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/bd6d808e27992135bd2e68d8f68f0cd21dd16de1))
+* delta engine (onlyNew/dateRange) + standardized B2B output envelope ([5b0caf5](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/5b0caf512b1df6e156a5150bdb73496be36d941c))
+* v2.0 - server-side filters, Last Updated delta engine, 84-field records, crash-safe delivery ([2e52b55](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/2e52b558698590cf77bc6eb61fafd86651f80874))
+
+
+### Bug Fixes
+
+* bump transitive adm-zip to 0.6.1, resolving a HIGH-severity CVE ([#10](https://github.com/stefanoseggio/australia-grantconnect-monitor/issues/10)) ([24793cf](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/24793cfad44394cea78da7149b45e373b54c725e))
+* **ci:** pass RELEASE_PLEASE_TOKEN so release PRs skip the bot-approval gate ([a9befe7](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/a9befe7edf72b78e70c18b1cecdaddd8be990b9d))
+* **delta:** a truncated cold run sets a baseline instead of a backlog ([7774edd](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/7774edd0880b90a1a25ee7cd0f84021d746205ea))
+* **delta:** remember a backlog floor when maxItems truncates a walk ([53bef8c](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/53bef8c10f85f865e17838de2aff892c071042dd))
+* label already-delivered, unchanged awards UNCHANGED instead of NEW_LISTING/AWARD_VARIATION ([#9](https://github.com/stefanoseggio/australia-grantconnect-monitor/issues/9)) ([e00f193](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/e00f19346aacea4a593fe20310dea6e8524fe409))
+* **state:** never adopt the v1 delta store into new delta-state names ([3f68e86](https://github.com/stefanoseggio/australia-grantconnect-monitor/commit/3f68e86c69be524b618fd0ed75da07a0982f8185))
+
 ## 2.0.1 - 2026-09-07
 
 ### Fixed
