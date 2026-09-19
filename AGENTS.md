@@ -174,6 +174,21 @@ watermark, lastRunAt, filtersSignature }`), v1 migration, 50k-entry prune.
 6. Charging: records with detail are pushed with event `result`, the rest
    with `result-summary`; `chargedCount` from the SDK is the number actually
    stored in PPE mode (outside PPE everything is stored, nothing charged).
+7. `classify()`'s fallback (known `gaId`, `lastUpdatedIso` not past `seen`)
+   returns `eventType: 'UNCHANGED'`, never the structural `NEW_LISTING`/
+   `AWARD_VARIATION` label - those mean "this row's shape says new award /
+   variation", not "this row was just re-served". Delta mode (`onlyNew:
+   true`) never delivers `UNCHANGED` rows (`walkListing` excludes them as
+   `'unchanged'` before the event-type filter even runs); full mode
+   (`onlyNew: false`, the default) does deliver them, by design - it's a
+   snapshot of everything currently matching, not a diff - so `UNCHANGED`
+   must stay in `ALL_EVENT_TYPES`' default set in `src/input.ts`, or a full
+   run would silently start suppressing every award it already delivered
+   once instead of re-serving the whole matching set (found 2026-09-19: the
+   fallback used to mislabel every re-served row `NEW_LISTING`/
+   `AWARD_VARIATION` forever - the same fallback shape as
+   florida-tenders-monitor's `classify()`, which as of this writing still
+   has the equivalent bug and has not been fixed).
 
 ## Tests
 

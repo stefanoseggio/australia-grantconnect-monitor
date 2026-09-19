@@ -100,7 +100,15 @@ function classify(
     if (previous !== '' && lastUpdatedIso && lastUpdatedIso > previous) {
         return { eventType: 'UPDATED', isNew: false, changed: true };
     }
-    return { eventType: structural, isNew: false, changed: false };
+    // Already delivered, and Last Updated hasn't advanced: this is NOT a new
+    // listing or a variation - it's the same award coming back around on a
+    // full (onlyNew: false) walk, or during v1-state reconciliation. Delta
+    // mode (onlyNew: true) excludes these from delivery entirely via
+    // walkListing's 'unchanged' rule; full mode still delivers them (that's
+    // its documented "every matching record, every run" contract), so the
+    // event type must say so truthfully instead of relabelling a re-served
+    // row as AWARD_VARIATION/NEW_LISTING.
+    return { eventType: 'UNCHANGED', isNew: false, changed: false };
 }
 
 async function loadListingPage(filters: ListingFilters, page: number) {

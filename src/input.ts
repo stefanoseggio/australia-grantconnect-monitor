@@ -22,7 +22,11 @@ export interface ResolvedInput {
     filtersSignature: string;
 }
 
-const ALL_EVENT_TYPES: EventType[] = ['NEW_LISTING', 'AWARD_VARIATION', 'UPDATED'];
+// Includes UNCHANGED so that leaving `eventTypes` unset keeps full mode's
+// documented behaviour (deliver every matching award every run, including
+// ones already delivered and untouched since) instead of silently turning
+// into a delta walk once UNCHANGED became a real, filterable event type.
+const ALL_EVENT_TYPES: EventType[] = ['NEW_LISTING', 'AWARD_VARIATION', 'UPDATED', 'UNCHANGED'];
 const KEYWORD_MATCHES: KeywordMatch[] = ['AllWord', 'AnyWord', 'ExactPhrase'];
 const DATE_TYPES: DateType[] = ['Publish Date', 'Approval Date', 'Start Date', 'End Date', 'Current', 'Closed'];
 const SORTS: SortBy[] = ['Last Updated', 'Publish Date', 'Relevance'];

@@ -1,4 +1,4 @@
-export type EventType = 'NEW_LISTING' | 'AWARD_VARIATION' | 'UPDATED';
+export type EventType = 'NEW_LISTING' | 'AWARD_VARIATION' | 'UPDATED' | 'UNCHANGED';
 export type KeywordMatch = 'AllWord' | 'AnyWord' | 'ExactPhrase';
 export type DateType = 'Publish Date' | 'Approval Date' | 'Start Date' | 'End Date' | 'Current' | 'Closed';
 export type SortBy = 'Last Updated' | 'Publish Date' | 'Relevance';

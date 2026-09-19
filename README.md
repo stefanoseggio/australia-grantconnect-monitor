@@ -193,7 +193,7 @@ Every filter is applied server-side by GrantConnect itself unless marked client-
 | `dateType` | string | `Publish Date` | Which date the window applies to: `Publish Date`, `Approval Date`, `Start Date`, `End Date`, or `Current` / `Closed` (running / ended grants, ignores the window) |
 | `dateFrom`, `dateTo` | string | - | Absolute (`2026-07-01`) or relative (`7 days`, `3 months`, `1 year`) from today, Canberra time |
 | `oneOffAdHoc`, `aggregateGrantAward` | string | `any` | `any`, `yes`, `no` |
-| `eventTypes` | string[] | all three | Which of `NEW_LISTING`, `AWARD_VARIATION`, `UPDATED` to deliver |
+| `eventTypes` | string[] | all four | Which of `NEW_LISTING`, `AWARD_VARIATION`, `UPDATED`, `UNCHANGED` to deliver. `UNCHANGED` only ever appears in full mode (`onlyNew: false`) - a previously delivered award re-served as-is because Last Updated hasn't moved; delta mode never delivers these at all |
 | `onlyNew` | boolean | `false` | Delta mode - see Reliability below |
 | `sortBy` | string | `Last Updated` | `Last Updated` (recommended and required for reliable monitoring), `Publish Date`, `Relevance` (needs a keyword) |
 | `deltaStateName` | string | fingerprint of the filters | Name of the delta memory; share it between tasks on purpose, never by accident |
@@ -251,6 +251,8 @@ One item per Grant Award record (fields trimmed for length here; every detail-fe
 
 A variation record looks the same with `"event_type": "AWARD_VARIATION"`, `"gaId": "GA270901-V1"`, `"variationNumber": 1`, `"baseGaId": "GA270901"` and a fresh `lastUpdatedIso"`.
 
+Run with `onlyNew: false` (the default) against a filter set you've already run before, and the same award comes back with `"event_type": "UNCHANGED"`, `"is_new": false` once its `lastUpdatedIso` stops advancing - it is being re-served as part of that run's full matching set, not re-announced as new. Delta mode (`onlyNew: true`) never delivers `UNCHANGED` rows at all; they're suppressed before delivery (see "Reliability & Delta Engine").
+
 | Field | Description |
 | --- | --- |
 | `record_id`, `event_type`, `scraped_at`, `is_new`, `source_url`, `data_source` | Integration envelope, identical across this developer's public-register Actors |
@@ -276,6 +278,7 @@ The Output tab also exposes five ready-made dataset views (Overview, Recipient d
 
 Delta mode (`onlyNew: true`) is a stateful watermark walk, not a page diff:
 
+- Full mode (`onlyNew: false`, the default) re-walks and re-delivers every award matching your filters on every run, up to `maxItems` - it is a snapshot, not a diff. It shares the same delta memory as delta mode (so a later `onlyNew: true` run on the same `deltaStateName` knows what's already gone out), which is why a previously delivered award whose `lastUpdatedIso` hasn't moved comes back labeled `UNCHANGED` rather than `NEW_LISTING`/`AWARD_VARIATION` - it truthfully reflects that nothing changed, it was just re-served.
 - Each delta configuration keeps its own memory in a named key-value store (`australia-grantconnect-monitor-state-<deltaStateName>`, defaulting to a hash of your filters so unrelated schedules never share state). The memory maps every delivered `gaId` to the `lastUpdatedIso` it carried, plus a watermark of the newest timestamp seen.
 - The **first** run with `onlyNew: true` is the baseline: it delivers up to `maxItems` of the most recently updated matching awards and records a *baseline floor* if it was cut short, so older activity is treated as history rather than triggering a slow archive drain on every later run.
 - Every **later** run walks the register in Last Updated order and stops once it reaches two consecutive already-known pages (or rows older than the watermark), so a quiet day costs only a couple of page fetches. If a run is itself truncated by `maxItems`, it records a *backlog floor* - the next run keeps walking through the already-known block down to that floor instead of stopping early and stranding undelivered rows.

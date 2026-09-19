@@ -32,7 +32,7 @@ describe('resolveInput', () => {
             maxConcurrency: 5,
             resetState: false,
         });
-        expect([...r.options.eventTypes].sort()).toEqual(['AWARD_VARIATION', 'NEW_LISTING', 'UPDATED']);
+        expect([...r.options.eventTypes].sort()).toEqual(['AWARD_VARIATION', 'NEW_LISTING', 'UNCHANGED', 'UPDATED']);
         expect(r.options.deltaStateName).toMatch(/^auto-[0-9a-f]{8}$/);
     });
 
